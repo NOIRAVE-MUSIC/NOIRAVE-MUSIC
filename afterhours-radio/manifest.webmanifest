@@ -1,0 +1,18 @@
+{
+  "id": "./index.html",
+  "name": "NoiRave — Community Radio",
+  "short_name": "NoiRave",
+  "description": "Share music and announcements, and chat with your community.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#10120f",
+  "theme_color": "#ff4057",
+  "categories": ["music", "social"],
+  "icons": [
+    { "src": "./noirave-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./noirave-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
