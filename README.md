@@ -59,7 +59,13 @@ Email sign-up now automatically creates a profile through a database trigger. Th
 
 The account Settings page and in-app Settings panel accept JPG, PNG, WebP, and GIF profile photos up to 5 MB. Photos are stored in the public Supabase `profile-photos` bucket and appear on profiles, the people list, and chat. Run the latest `schema.sql` to create the bucket and its per-account storage policies.
 
-The app includes a web manifest, a NoiRave icon, a service worker, touch-friendly controls, safe-area spacing, and responsive layouts. Host it over HTTPS (or `localhost` for development) to enable installation. On supported browsers use **Install NoiRave**; on iPhone/iPad, use Safari’s **Share → Add to Home Screen**.
+NoiRave is installable as an app on desktop and mobile from the same codebase. It includes a web manifest, service worker, touch-friendly controls, safe-area spacing, and responsive layouts. Host it over HTTPS (or `localhost` for development). On Chrome or Edge for Windows/macOS/Linux, use the address-bar install icon or **Install NoiRave** in Settings. On Android, use the install prompt or browser menu. On iPhone/iPad, open the site in Safari and choose **Share → Add to Home Screen**. The installable app has Chats and Settings shortcuts where the platform supports them.
+
+Settings includes a mobile-friendly device section for compact-feed preference and install instructions. Signing in and profile settings work inside the installed app too.
+
+## Desktop and store app projects
+
+The Windows Electron installer is built from [desktop/README.md](desktop/README.md). Android and iOS native projects use Capacitor; see [mobile/README.md](mobile/README.md). The Windows installer is unsigned, and the mobile projects need platform signing, store listings, and developer accounts before public release. Supabase stays hosted; use the callback URL documented in the mobile guide for native email confirmation and password resets.
 
 ### Requests, reports, and bug reports
 

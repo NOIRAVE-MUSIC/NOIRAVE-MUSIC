@@ -1,8 +1,9 @@
-const CACHE_NAME = 'noirave-shell-v2';
+const CACHE_NAME = 'noirave-shell-v3';
 const SHELL = [
   './', './index.html', './index.html?view=chats', './chats.html', './login.html', './signup.html', './forgot-password.html',
   './settings.html', './profile.html', './account.css', './supabase-client.js',
-  './manifest.webmanifest', './noirave-icon.svg'
+  './manifest.webmanifest', './noirave-icon.svg', './assets/noirave-180.png',
+  './assets/noirave-192.png', './assets/noirave-512.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)));

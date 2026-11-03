@@ -6,6 +6,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 
+export function authRedirectTo(path = 'index.html') {
+  if (window.Capacitor?.isNativePlatform?.()) {
+    return `com.noirave.app://auth-callback?next=${encodeURIComponent(path)}`;
+  }
+  return new URL(path, window.location.href).href;
+}
+
+if (window.Capacitor?.isNativePlatform?.()) {
+  import('./native-auth.js').then(({ registerNativeAuth }) => registerNativeAuth(supabase))
+    .catch(error => console.error('NoiRave mobile sign-in callback could not start.', error));
+}
+
 // Create a profile if this is the member's first visit, without overwriting an existing profile.
 export async function ensureProfile(user) {
   if (!user || user.is_anonymous) return null;

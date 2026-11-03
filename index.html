@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#ff4057" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="noirave-icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="noirave-icon.svg" />
+  <link rel="apple-touch-icon" href="assets/noirave-180.png" />
   <title>NoiRave Music</title><script>if(new URLSearchParams(location.search).get('view')==='chats')document.documentElement.dataset.view='chats';</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,7 +76,7 @@ button.sayhi:hover{background:#382126}
 <div class="modalback" id="groupChatModal"><section class="modal"><div class="eyebrow">PRIVATE GROUP</div><h2>Create a group chat</h2><p>Pick at least two other members. Only group members can read its messages.</p><div class="field"><label for="groupChatName">Group name</label><input id="groupChatName" maxlength="80" required placeholder="Give the group a name"></div><div class="field"><label>Members</label><div id="groupMemberList" class="contactlist"></div></div><div id="groupChatStatus" class="message" role="status"></div><div class="modalfoot"><button type="button" class="secondary" onclick="closeModal('groupChatModal')">Cancel</button><button type="button" class="primary" id="createGroupChat">Create group</button></div></section></div><div class="modalback" id="verificationModal"><form class="modal" id="verificationForm"><div class="eyebrow">TRUST & SAFETY</div><h2>Verified Profile check</h2><p>Verified profiles can publish music and announcements. Tell the NoiRave team about your profile and share a link we can review.</p><div class="info" id="verificationStatus">Not verified yet.</div><div class="field"><label for="verificationNote">About your profile</label><textarea id="verificationNote" minlength="10" maxlength="1000" required placeholder="Who are you, and what do you plan to share?"></textarea></div><div class="field"><label for="verificationEvidence">Profile or portfolio link (optional)</label><input id="verificationEvidence" type="url" maxlength="500" placeholder="https://…"></div><div id="verificationMessage" class="message" role="status"></div><div class="modalfoot"><button type="button" class="secondary" onclick="closeModal('verificationModal')">Cancel</button><button class="primary" id="verificationSubmit">Send for review</button></div></form></div>
 <div class="toast" id="toast"></div>
 <script type="module">
-  import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ensureProfile, uploadProfilePhoto } from './supabase-client.js';
+  import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ensureProfile, uploadProfilePhoto, authRedirectTo } from './supabase-client.js';
   const hasConfig = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.length > 20;
   let userName = localStorage.getItem('noirave_name') || 'Guest';
   let currentUser = null;
@@ -184,8 +185,8 @@ $('avatarFile').addEventListener('change',e=>{const file=e.target.files?.[0];if(
   $('signOutButton').onclick=async()=>{if(supabase){await supabase.auth.signOut();location.reload();return;}else currentUser=null;userName='Guest';localStorage.setItem('noirave_name',userName);updateAccountUI();closeModal('settingsModal');toast('Signed out');};
   $('authForm').onsubmit=async e=>{e.preventDefault();if(!supabase){toast('Connect Supabase in the setup guide to enable email accounts.');return;}const mode=$('authModal').dataset.mode,email=$('authEmail').value.trim(),password=$('authPassword').value;let result;
     if(mode==='signin')result=await supabase.auth.signInWithPassword({email,password});
-    else if(mode==='signup'){const name=$('authName').value.trim()||email.split('@')[0];result=await supabase.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:location.href}});if(!result.error&&!result.data.session){closeAuth();toast('Check your email to confirm your account, then sign in.');return;}}
-    else if(mode==='forgot'){result=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.href});if(!result.error){closeAuth();toast('If that account exists, a reset link is on its way.');return;}}
+    else if(mode==='signup'){const name=$('authName').value.trim()||email.split('@')[0];result=await supabase.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:authRedirectTo('index.html')}});if(!result.error&&!result.data.session){closeAuth();toast('Check your email to confirm your account, then sign in.');return;}}
+    else if(mode==='forgot'){result=await supabase.auth.resetPasswordForEmail(email,{redirectTo:authRedirectTo('profile.html?action=reset')});if(!result.error){closeAuth();toast('If that account exists, a reset link is on its way.');return;}}
     else if(mode==='update'){const next=$('authConfirm').value;if(next.length<8){toast('Use at least 8 characters.');return;}result=await supabase.auth.updateUser({password:next});}
     if(result?.error){toast(result.error.message);return;}if(result?.data?.user){currentUser=result.data.user;await refreshPublishingRole();await refreshPlatformControls();userName=currentUser.user_metadata?.display_name||localStorage.getItem('noirave_name')||email.split('@')[0];localStorage.setItem('noirave_name',userName);updateAccountUI();await writeProfile().catch(err=>toast(err.message));updateAccountUI();await Promise.all([loadPosts(),loadMessages(),loadConversations()]);await loadModerationWarnings();}closeAuth();toast(mode==='signup'?'Welcome to NoiRave ✨':mode==='update'?'Password updated':'You’re signed in');};
   renderPosts();renderMessages();renderPeople();renderNotifications();document.body.classList.toggle('compact',localStorage.getItem('noirave_compact')==='true');updateAccountUI();renderChatView();const pageNotice=sessionStorage.getItem('noirave_notice');if(pageNotice){sessionStorage.removeItem('noirave_notice');setTimeout(()=>toast(pageNotice),400);}
