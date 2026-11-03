@@ -16,18 +16,24 @@ create table if not exists public.messages (
   author_name text not null check (char_length(author_name) between 1 and 40),
   body text not null check (char_length(body) between 1 and 500),
   reply_to bigint references public.messages(id) on delete set null,
+  is_pinned boolean not null default false,
   created_at timestamptz not null default now()
 );
 
 alter table public.messages add column if not exists reply_to bigint references public.messages(id) on delete set null;
+alter table public.messages add column if not exists is_pinned boolean not null default false;
 
 -- Direct messages are stored separately from the public room and protected by membership.
-create table if not exists public.conversations (5
+create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
   created_by uuid not null references auth.users(id) on delete cascade,
+  title text not null default '',
+  is_group boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.conversations add column if not exists title text not null default '';
+alter table public.conversations add column if not exists is_group boolean not null default false;
 create table if not exists public.conversation_members (
   conversation_id uuid not null references public.conversations(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -41,8 +47,10 @@ create table if not exists public.direct_messages (
   author_name text not null check (char_length(author_name) between 1 and 40),
   body text not null check (char_length(body) between 1 and 500),
   reply_to bigint references public.direct_messages(id) on delete set null,
+  is_pinned boolean not null default false,
   created_at timestamptz not null default now()
 );
+alter table public.direct_messages add column if not exists is_pinned boolean not null default false;
 create index if not exists direct_messages_conversation_created_idx
   on public.direct_messages(conversation_id,created_at desc);
 create index if not exists conversation_members_user_idx
@@ -114,6 +122,10 @@ create table if not exists public.profiles (
   profile_note text not null default '' check (char_length(profile_note) <= 120),
   updated_at timestamptz not null default now()
 );
+
+-- Upgrade existing profile tables before any functions, policies, or grants use these fields.
+alter table public.profiles add column if not exists custom_status text not null default '' check (char_length(custom_status) <= 60);
+alter table public.profiles add column if not exists profile_note text not null default '' check (char_length(profile_note) <= 120);
 
 -- Create a profile automatically for new email accounts.
 create or replace function public.handle_new_noirave_user()
@@ -283,8 +295,6 @@ revoke execute on function public.can_publish_noirave() from public, anon;
 grant execute on function public.can_publish_noirave() to authenticated;
 
 -- Prevent profile owners from granting themselves verification.
-alter table public.profiles add column if not exists custom_status text not null default '' check (char_length(custom_status) <= 60);
-alter table public.profiles add column if not exists profile_note text not null default '' check (char_length(profile_note) <= 120);
 revoke insert, update on public.profiles from authenticated;
 grant insert (user_id,display_name,bio,favorite_genres,custom_status,profile_note,avatar_url,updated_at) on public.profiles to authenticated;
 grant update (display_name,bio,favorite_genres,custom_status,profile_note,avatar_url,updated_at) on public.profiles to authenticated;
@@ -293,16 +303,20 @@ grant update (display_name,bio,favorite_genres,custom_status,profile_note,avatar
 create policy "Users create their own profile" on public.profiles for insert to authenticated with check (auth.uid()=user_id and not is_verified);
 
 drop policy if exists "Signed-in users can create posts" on public.posts;
+drop policy if exists "Verified members can create posts" on public.posts;
 create policy "Verified members can create posts" on public.posts for insert to authenticated
   with check (auth.uid()=user_id and public.can_publish_noirave());
 drop policy if exists "Authors can delete their posts" on public.posts;
+drop policy if exists "Authors or CEO can delete posts" on public.posts;
 create policy "Authors or CEO can delete posts" on public.posts for delete to authenticated
   using (auth.uid()=user_id or public.is_noirave_ceo());
 drop policy if exists "Authors can delete their messages" on public.messages;
+drop policy if exists "Authors or CEO can delete room messages" on public.messages;
 create policy "Authors or CEO can delete room messages" on public.messages for delete to authenticated
   using (auth.uid()=user_id or public.is_noirave_ceo());
 
 drop policy if exists "Users upload to their own audio folder" on storage.objects;
+drop policy if exists "Verified members upload community audio" on storage.objects;
 create policy "Verified members upload community audio" on storage.objects for insert to authenticated with check (
   bucket_id='community-audio' and (storage.foldername(name))[1]=auth.uid()::text and public.can_publish_noirave()
 );
@@ -439,10 +453,6 @@ create policy "Members acknowledge own warnings and CEO manages all" on public.m
 notify pgrst, 'reload schema';
 
 -- Group conversations and pin flags.
-alter table public.conversations add column if not exists title text not null default '';
-alter table public.conversations add column if not exists is_group boolean not null default false;
-alter table public.messages add column if not exists is_pinned boolean not null default false;
-alter table public.direct_messages add column if not exists is_pinned boolean not null default false;
 grant update(is_pinned) on public.messages, public.direct_messages to authenticated;
 drop policy if exists "Authors or CEO pin room messages" on public.messages;
 create policy "Authors or CEO pin room messages" on public.messages for update to authenticated
